@@ -249,6 +249,7 @@
         }
         .delete-btn svg { width:14px; height:14px; fill:#fff; }
         .delete-btn:hover { background:#dc2626; transform: translateY(-2px); }
+        /* save-btn removed — saving is now explicit by Enter key */
         
         /* Modal overlay and floating container */
         #modalOverlay {
@@ -390,6 +391,37 @@
                 left: 5px;
             }
         }
+        /* Table header / caption styling (kehilangan isi tabel) */
+        thead th, table caption {
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 20px;
+            line-height: 1.2;
+        }
+        /* Styling terpisah untuk isi tabel (body) */
+        .table-isi, .table-isi td, .table-isi td input, .table-isi td textarea {
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 20px;
+            line-height: 1.2;
+        }
+        /* Toast styles */
+        .toast {
+            min-width: 220px;
+            max-width: 360px;
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 10px 12px;
+            border-radius: 8px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+            font-size: 0.95rem;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .toast.success { background: linear-gradient(90deg,#10b981,#059669); }
+        .toast.error { background: linear-gradient(90deg,#ef4444,#dc2626); }
+        .toast .title { font-weight:700; margin-right:8px; }
     </style>
 </head>
 <body>
@@ -486,7 +518,100 @@
             <div id="pelangganTableWrap" class="table-wrap"></div>
         </div>
     </div>
+    <div id="toastContainer" aria-live="polite" style="position:fixed;right:16px;bottom:16px;z-index:2000;display:flex;flex-direction:column;gap:8px"></div>
+    <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-database-compat.js"></script>
     <script>
+        // Firebase configuration (compat v12.6.0)
+        const firebaseConfig = {
+  apiKey: "AIzaSyDuLuiKv4yRoxocLQ-JHDGAu4be68gOAd4",
+  authDomain: "weborganizer-f926a.firebaseapp.com",
+  databaseURL: "https://weborganizer-f926a-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "weborganizer-f926a",
+  storageBucket: "weborganizer-f926a.firebasestorage.app",
+  messagingSenderId: "361016221332",
+  appId: "1:361016221332:web:6c30457b837da61f19de81"
+};
+        // Initialize Firebase (compat)
+        let firebaseApp = null;
+        let firebaseDB = null;
+        try {
+            firebaseApp = firebase.initializeApp(firebaseConfig);
+            if (firebase && firebase.database) {
+                firebaseDB = firebase.database();
+            }
+        } catch (err) {
+            console.warn('Firebase init error:', err);
+        }
+
+        // Small helper to check whether Realtime Database is available
+        const useFirebase = !!(firebaseDB && firebaseDB.ref);
+
+        // Minimal helpers to read/write to RTDB (paths: /supplierData and /pelangganData)
+        function firebaseSet(path, data) {
+            if (!useFirebase) return Promise.resolve();
+            try {
+                return firebaseDB.ref(path).set(data);
+            } catch (e) {
+                console.warn('firebaseSet error', e);
+                return Promise.resolve();
+            }
+        }
+        function firebaseGetOnce(path) {
+            return new Promise((resolve) => {
+                if (!useFirebase) return resolve(null);
+                firebaseDB.ref(path).once('value').then(snap => resolve(snap.val())).catch(err => { console.warn(err); resolve(null); });
+            });
+        }
+        function firebaseRemove(path) {
+            if (!useFirebase) return Promise.resolve();
+            try {
+                return firebaseDB.ref(path).remove();
+            } catch (e) {
+                console.warn('firebaseRemove error', e);
+                return Promise.resolve();
+            }
+        }
+
+        // Toast helper
+        function showToast(message, type = 'info', timeout = 3000) {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const el = document.createElement('div');
+            el.className = 'toast ' + (type === 'success' ? 'success' : (type === 'error' ? 'error' : ''));
+            el.innerHTML = `<div class="title">${type === 'success' ? 'Sukses' : (type === 'error' ? 'Error' : 'Info')}</div><div class="msg">${message}</div>`;
+            container.appendChild(el);
+            setTimeout(()=>{ el.style.opacity = '0.0'; el.style.transform='translateX(8px)'; }, timeout-300);
+            setTimeout(()=>{ try{ container.removeChild(el);}catch(e){} }, timeout);
+        }
+
+        // Add realtime listeners so database updates propagate to all clients
+        if (useFirebase) {
+            try {
+                // supplierData listener - expecting new structured format
+                firebaseDB.ref('/supplierData').on('value', snap => {
+                    const val = snap.val();
+                    if (val !== null) {
+                        localStorage.setItem(supplierDataKey, JSON.stringify(val));
+                        try { renderSupplierTable(); } catch(e){/* ignore */}
+                    }
+                }, err => console.warn('supplierData listener error', err));
+
+                // pelangganData listener - expecting new structured format
+                firebaseDB.ref('/pelangganData').on('value', snap => {
+                    const val = snap.val();
+                    if (val !== null) {
+                        localStorage.setItem(pelangganDataKey, JSON.stringify(val));
+                        try { renderPelangganTable(); } catch(e){/* ignore */}
+                    }
+                }, err => console.warn('pelangganData listener error', err));
+            } catch (e) {
+                console.warn('Error attaching realtime listeners', e);
+            }
+        } else {
+            console.info('Realtime Database not available (useFirebase=false).');
+        }
+
         // Modal state
         let isModalMaximized = false;
         
@@ -542,7 +667,7 @@
             if (e.key === 'Escape') closeModal();
         });
 
-        
+
         function showTab(tab) {
             const nav = document.getElementById('navTabs');
             // show nav only for supplier/pelanggan, hide on home
@@ -563,108 +688,313 @@
         const supplierDataKey = 'supplierData';
         const pelangganDataKey = 'pelangganData';
 
-        function getSupplierData() {
-            let data = localStorage.getItem(supplierDataKey);
-            return data ? JSON.parse(data) : {};
-        }
-        function setSupplierData(data) {
-            localStorage.setItem(supplierDataKey, JSON.stringify(data));
-        }
-        function getPelangganData() {
-            let data = localStorage.getItem(pelangganDataKey);
-            return data ? JSON.parse(data) : [];
-        }
-        function setPelangganData(data) {
-            localStorage.setItem(pelangganDataKey, JSON.stringify(data));
-        }
+            // New structured format:
+            // supplierData = { KATEGORI: { _order: [id,...], rows: { id: {Vendor:..., ...} } }, ... }
+            // pelangganData = { _order: [id,...], rows: { id: {Nama Pelanggan:..., ...} } }
 
-        // Supplier Table
+            function getSupplierData() {
+                let raw = localStorage.getItem(supplierDataKey);
+                if (!raw) return {};
+                const parsed = JSON.parse(raw);
+                // migrate legacy arrays (if any) to new structure
+                const out = {};
+                for (const k in parsed) {
+                    if (Array.isArray(parsed[k])) {
+                        // convert array to ordered rows with generated ids
+                        const rows = {};
+                        const order = [];
+                        parsed[k].forEach(r => {
+                            const id = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+                            rows[id] = r || {};
+                            order.push(id);
+                        });
+                        out[k] = { _order: order, rows };
+                    } else if (parsed[k] && parsed[k].rows && parsed[k]._order) {
+                        out[k] = parsed[k];
+                    } else {
+                        // unknown shape -> try to convert object-of-rows
+                        const rows = parsed[k] || {};
+                        const order = Object.keys(rows);
+                        out[k] = { _order: order, rows };
+                    }
+                }
+                return out;
+            }
+            function setSupplierData(data) {
+                localStorage.setItem(supplierDataKey, JSON.stringify(data));
+            }
+
+            function getPelangganData() {
+                let raw = localStorage.getItem(pelangganDataKey);
+                if (!raw) return { _order: [], rows: {} };
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    // legacy array -> convert
+                    const rows = {};
+                    const order = [];
+                    parsed.forEach(r => { const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); rows[id]=r||{}; order.push(id); });
+                    return { _order: order, rows };
+                }
+                if (parsed._order && parsed.rows) return parsed;
+                // otherwise try object -> convert
+                const rows = parsed || {};
+                const order = Object.keys(rows);
+                return { _order: order, rows };
+            }
+            function setPelangganData(data) {
+                localStorage.setItem(pelangganDataKey, JSON.stringify(data));
+            }
+            // Jika belum ada data di localStorage, isi dengan contoh data agar tabel terisi
+            (function initSampleData() {
+                try {
+                    const curSup = getSupplierData();
+                    if (!localStorage.getItem(supplierDataKey) || Object.keys(curSup).length === 0) {
+                        const sampleSupplier = {
+                            "Umum": {
+                                _order: ['r1','r2'],
+                                rows: {
+                                    r1: { Vendor: 'Toko A', Jenis: 'Kain', Ukuran: '2m', Bahan: 'Katun', 'Harga Beli': '50000', 'Harga Jual': '75000', Keterangan: 'Stok terbatas' },
+                                    r2: { Vendor: 'Supplier B', Jenis: 'Benang', Ukuran: '500g', Bahan: 'Nilon', 'Harga Beli': '20000', 'Harga Jual': '30000', Keterangan: '' }
+                                }
+                            }
+                        };
+                        setSupplierData(sampleSupplier);
+                    }
+
+                    const curPel = getPelangganData();
+                    if (!localStorage.getItem(pelangganDataKey) || !(curPel._order && curPel._order.length > 0)) {
+                        const samplePelanggan = {
+                            _order: ['p1','p2'],
+                            rows: {
+                                p1: { 'Nama Pelanggan': 'Budi', 'Pesanan': 'Kaos', 'Jumlah': '10', 'Harga': '100000', 'Keterangan': 'Cetak sablon' },
+                                p2: { 'Nama Pelanggan': 'Siti', 'Pesanan': 'Hoodie', 'Jumlah': '5', 'Harga': '150000', 'Keterangan': 'Warna hitam' }
+                            }
+                        };
+                        setPelangganData(samplePelanggan);
+                    }
+                } catch (e) {
+                    console.warn('initSampleData error', e);
+                }
+            })();
+        // NOTE: No automatic Firebase writes while typing. set*Data functions persist to localStorage
+        // and specific save/delete functions update Firebase so operations are explicit and atomic.
+
+        // Supplier Table (now keyed by id with order)
         const supplierColumns = ['Vendor','Jenis','Ukuran','Bahan','Harga Beli','Harga Jual','Keterangan'];
+        function ensureSupplierCategory(kategori) {
+            const data = getSupplierData();
+            if (!data[kategori]) data[kategori] = { _order: [], rows: {} };
+            return data;
+        }
         function renderSupplierTable() {
             const kategori = document.getElementById('kategoriSupplier').value;
-            const data = getSupplierData();
-            if (!data[kategori]) data[kategori] = [];
-            // Let browser size columns according to content — use textarea for long fields
-            let html = `<table>`;
-            html += `<thead><tr>${supplierColumns.map(col=>`<th>${col}</th>`).join('')}<th></th></tr></thead><tbody>`;
-            data[kategori].forEach((row,i) => {
-                html += `<tr>`;
+            const data = ensureSupplierCategory(kategori);
+            const cat = data[kategori];
+            // normalize order
+            if (!Array.isArray(cat._order)) cat._order = Object.keys(cat.rows || {});
+            let html = `<table class="data-table">`;
+            html += `<thead><tr>${supplierColumns.map(col=>`<th>${col}</th>`).join('')}<th></th></tr></thead><tbody class="table-isi">`;
+            cat._order.forEach(id => {
+                const row = cat.rows[id] || {};
+                html += `<tr data-id="${id}">`;
                 supplierColumns.forEach(col => {
-                    // use textarea for 'Vendor' and 'Keterangan' so long text is visible
                     if (col === 'Vendor' || col === 'Keterangan') {
                         const v = (row[col]||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                        html += `<td><textarea oninput="onCellInput(this, 'supplier','${kategori}', ${i}, '${col}')">${v}</textarea></td>`;
+                        html += `<td><textarea oninput="onCellInput(this, 'supplier','${kategori}', '${id}', '${col}')" onkeydown="if(event.key==='Enter'){ event.preventDefault(); saveSupplierRow('${kategori}', '${id}'); addSupplierRowAfter('${kategori}','${id}'); }">${v}</textarea></td>`;
                     } else {
                         const v = (row[col]||'').replace(/"/g,'&quot;');
-                        html += `<td><input type="text" value="${v}" onchange="updateSupplierCell('${kategori}',${i},'${col}',this.value)"></td>`;
+                        html += `<td><input type="text" value="${v}" oninput="updateSupplierCell('${kategori}','${id}','${col}',this.value)" onkeydown="if(event.key==='Enter'){ event.preventDefault(); saveAndInsertSupplier('${kategori}','${id}'); }"></td>`;
                     }
                 });
-                html += `<td><button class="delete-btn" title="Hapus" onclick="deleteSupplierRow('${kategori}',${i})"><svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm3 4v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10H6zm3-6h6l1 1H8z"/></svg></button></td></tr>`;
+                html += `<td style="display:flex;gap:8px;align-items:center;justify-content:flex-end;">` +
+                            `<button class="delete-btn" title="Hapus" onclick="deleteSupplierRow('${kategori}','${id}')"><svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm3 4v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10H6zm3-6h6l1 1H8z"/></svg></button>` +
+                          `</td></tr>`;
             });
+            // if no rows, show an empty row to start
+            if (cat._order.length === 0) {
+                const id = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+                cat._order.push(id);
+                cat.rows[id] = {};
+                setSupplierData(data);
+                html = ``; // re-render
+                return renderSupplierTable();
+            }
             html += `</tbody></table>`;
             document.getElementById('supplierTableWrap').innerHTML = html;
-            // Auto-resize textareas after render
             document.querySelectorAll('#supplierTableWrap textarea').forEach(el=>autoResize(el));
         }
         function addSupplierRow() {
             const kategori = document.getElementById('kategoriSupplier').value;
-            const data = getSupplierData();
-            if (!data[kategori]) data[kategori] = [];
-            data[kategori].push({});
+            addSupplierRowAfter(kategori, null);
+        }
+        async function addSupplierRowAfter(kategori, afterId) {
+            const data = ensureSupplierCategory(kategori);
+            const cat = data[kategori];
+            const id = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+            cat.rows[id] = { Vendor: '', Jenis: '', Ukuran: '', Bahan: '', 'Harga Beli': '', 'Harga Jual': '', Keterangan: '' };
+            if (!cat._order) cat._order = [];
+            if (afterId && cat._order.indexOf(afterId) !== -1) {
+                const idx = cat._order.indexOf(afterId);
+                cat._order.splice(idx+1,0,id);
+            } else {
+                cat._order.push(id);
+            }
             setSupplierData(data);
             renderSupplierTable();
+            // focus first input of new row after a short delay
+            setTimeout(()=>{
+                const row = document.querySelector(`#supplierTableWrap tr[data-id="${id}"] input, #supplierTableWrap tr[data-id="${id}"] textarea`);
+                if (row) row.focus();
+            },50);
+            // update Firebase order and empty row record so other clients see change
+            if (useFirebase) {
+                try {
+                    await firebaseDB.ref('supplierData').child(kategori).child('rows').child(id).set({});
+                    await firebaseDB.ref('supplierData').child(kategori).child('_order').set(data[kategori]._order);
+                    showToast('Baris supplier ditambahkan (sync).', 'success');
+                } catch (e) {
+                    console.warn('addSupplierRowAfter firebase update error', e);
+                }
+            }
         }
-        function updateSupplierCell(kategori, idx, col, val) {
-            const data = getSupplierData();
-            data[kategori][idx][col] = val;
+        function updateSupplierCell(kategori, id, col, val) {
+            const data = ensureSupplierCategory(kategori);
+            data[kategori].rows[id] = data[kategori].rows[id] || {};
+            data[kategori].rows[id][col] = val;
             setSupplierData(data);
         }
-        function deleteSupplierRow(kategori, idx) {
+        async function deleteSupplierRow(kategori, id) {
             const data = getSupplierData();
-            data[kategori].splice(idx,1);
+            if (!data[kategori]) return;
+            const cat = data[kategori];
+            // keep a copy in case we need to revert
+            const prior = { rows: { ...cat.rows }, _order: cat._order.slice() };
+            // apply local delete
+            delete cat.rows[id];
+            const idx = cat._order.indexOf(id);
+            if (idx !== -1) cat._order.splice(idx,1);
             setSupplierData(data);
             renderSupplierTable();
+            if (useFirebase) {
+                try {
+                    await firebaseDB.ref('supplierData').child(kategori).child('rows').child(id).remove();
+                    await firebaseDB.ref('supplierData').child(kategori).child('_order').set(cat._order);
+                    showToast('Baris supplier dihapus dari database.', 'success');
+                } catch (e) {
+                    console.warn('deleteSupplierRow firebase error', e);
+                    // revert local change
+                    data[kategori].rows = prior.rows;
+                    data[kategori]._order = prior._order;
+                    setSupplierData(data);
+                    renderSupplierTable();
+                    showToast('Gagal menghapus di Firebase: ' + (e && e.message ? e.message : e), 'error', 5000);
+                }
+            } else {
+                showToast('Baris supplier dihapus (offline).', 'success');
+            }
         }
 
-        // Pelanggan Table
+        // Pelanggan Table (keyed rows with order)
         const pelangganColumns = ['Nama Pelanggan','Pesanan','Jumlah','Harga','Keterangan'];
-        function renderPelangganTable() {
+        function ensurePelangganStructure() {
             const data = getPelangganData();
-            let html = `<table>`;
-            html += `<thead><tr>${pelangganColumns.map(col=>`<th>${col}</th>`).join('')}<th></th></tr></thead><tbody>`;
-            data.forEach((row,i) => {
-                html += `<tr>`;
+            if (!data._order) data._order = Object.keys(data.rows || {});
+            if (!data.rows) data.rows = {};
+            return data;
+        }
+        function renderPelangganTable() {
+            const data = ensurePelangganStructure();
+            const order = data._order || [];
+            let html = `<table class="data-table">`;
+            html += `<thead><tr>${pelangganColumns.map(col=>`<th>${col}</th>`).join('')}<th></th></tr></thead><tbody class="table-isi">`;
+            order.forEach(id => {
+                const row = data.rows[id] || {};
+                html += `<tr data-id="${id}">`;
                 pelangganColumns.forEach(col => {
                     if (col === 'Nama Pelanggan' || col === 'Pesanan' || col === 'Keterangan') {
                         const v = (row[col]||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                        html += `<td><textarea oninput="onCellInput(this, 'pelanggan', null, ${i}, '${col}')">${v}</textarea></td>`;
+                        html += `<td><textarea oninput="onCellInput(this, 'pelanggan', null, '${id}', '${col}')" onkeydown="if(event.key==='Enter'){ event.preventDefault(); savePelangganRow('${id}'); addPelangganRowAfter('${id}'); }">${v}</textarea></td>`;
                     } else {
                         const v = (row[col]||'').replace(/"/g,'&quot;');
-                        html += `<td><input type="text" value="${v}" onchange="updatePelangganCell(${i},'${col}',this.value)"></td>`;
+                        html += `<td><input type="text" value="${v}" oninput="updatePelangganCell('${id}','${col}',this.value)" onkeydown="if(event.key==='Enter'){ event.preventDefault(); saveAndInsertPelanggan('${id}'); }"></td>`;
                     }
                 });
-                html += `<td><button class="delete-btn" title="Hapus" onclick="deletePelangganRow(${i})"><svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm3 4v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10H6zm3-6h6l1 1H8z"/></svg></button></td></tr>`;
+                html += `<td style="display:flex;gap:8px;align-items:center;justify-content:flex-end;">` +
+                            `<button class="delete-btn" title="Hapus" onclick="deletePelangganRow('${id}')"><svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm3 4v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10H6zm3-6h6l1 1H8z"/></svg></button>` +
+                          `</td></tr>`;
             });
+            if (order.length === 0) {
+                const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+                data._order.push(id);
+                data.rows[id] = {};
+                setPelangganData(data);
+                return renderPelangganTable();
+            }
             html += `</tbody></table>`;
             document.getElementById('pelangganTableWrap').innerHTML = html;
             document.querySelectorAll('#pelangganTableWrap textarea').forEach(el=>autoResize(el));
         }
         function addPelangganRow() {
-            const data = getPelangganData();
-            data.push({});
+            addPelangganRowAfter(null);
+        }
+        async function addPelangganRowAfter(afterId) {
+            const data = ensurePelangganStructure();
+            const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+            data.rows[id] = { "Nama Pelanggan": '', "Pesanan": '', "Jumlah": '', "Harga": '', "Keterangan": '' };
+            if (!data._order) data._order = [];
+            if (afterId && data._order.indexOf(afterId) !== -1) {
+                const idx = data._order.indexOf(afterId);
+                data._order.splice(idx+1,0,id);
+            } else {
+                data._order.push(id);
+            }
             setPelangganData(data);
             renderPelangganTable();
+            setTimeout(()=>{
+                const row = document.querySelector(`#pelangganTableWrap tr[data-id="${id}"] input, #pelangganTableWrap tr[data-id="${id}"] textarea`);
+                if (row) row.focus();
+            },50);
+            // update Firebase order and empty row record
+            if (useFirebase) {
+                try {
+                    await firebaseDB.ref('pelangganData').child('rows').child(id).set({});
+                    await firebaseDB.ref('pelangganData').child('_order').set(data._order);
+                    showToast('Baris pelanggan ditambahkan (sync).', 'success');
+                } catch (e) { console.warn('addPelangganRowAfter firebase update error', e); }
+            }
         }
-        function updatePelangganCell(idx, col, val) {
-            const data = getPelangganData();
-            data[idx][col] = val;
+        function updatePelangganCell(id, col, val) {
+            const data = ensurePelangganStructure();
+            data.rows[id] = data.rows[id] || {};
+            data.rows[id][col] = val;
             setPelangganData(data);
         }
-        function deletePelangganRow(idx) {
-            const data = getPelangganData();
-            data.splice(idx,1);
+        async function deletePelangganRow(id) {
+            const data = ensurePelangganStructure();
+            // backup before mutating
+            const prior = { rows: { ...data.rows }, _order: data._order.slice() };
+            delete data.rows[id];
+            const idx = data._order.indexOf(id);
+            if (idx !== -1) data._order.splice(idx,1);
             setPelangganData(data);
             renderPelangganTable();
+            if (useFirebase) {
+                try {
+                    await firebaseDB.ref('pelangganData').child('rows').child(id).remove();
+                    await firebaseDB.ref('pelangganData').child('_order').set(data._order);
+                    showToast('Baris pelanggan dihapus dari database.', 'success');
+                } catch (e) {
+                    console.warn('deletePelangganRow firebase error', e);
+                    // revert
+                    data.rows = prior.rows;
+                    data._order = prior._order;
+                    setPelangganData(data);
+                    renderPelangganTable();
+                    showToast('Gagal menghapus di Firebase: ' + (e && e.message ? e.message : e), 'error', 5000);
+                }
+            } else {
+                showToast('Baris pelanggan dihapus (offline).', 'success');
+            }
         }
 
         // Auto-resize helper for textarea cells and persist value
@@ -679,22 +1009,118 @@
             autoResize(el);
             const val = el.value;
             if (type === 'supplier') {
-                const data = getSupplierData();
-                if (!data[kategori]) data[kategori] = [];
-                data[kategori][idx] = data[kategori][idx] || {};
-                data[kategori][idx][col] = val;
-                setSupplierData(data);
+                // idx is row id
+                updateSupplierCell(kategori, idx, col, val);
             } else {
-                const data = getPelangganData();
-                data[idx] = data[idx] || {};
-                data[idx][col] = val;
-                setPelangganData(data);
+                // idx is row id for pelanggan
+                updatePelangganCell(idx, col, val);
             }
         }
 
-        // Initial render
-        renderSupplierTable();
-        renderPelangganTable();
+        // Per-row save functions: write single row to Firebase and give quick visual console feedback
+        async function saveSupplierRow(kategori, id) {
+            try {
+                // Read current DOM values for the row to ensure latest content is saved
+                const tr = document.querySelector(`#supplierTableWrap tr[data-id="${id}"]`);
+                const row = {};
+                if (tr) {
+                    const inputs = tr.querySelectorAll('input, textarea');
+                    for (let i = 0; i < inputs.length; i++) {
+                        const el = inputs[i];
+                        // map inputs to columns order
+                        const col = supplierColumns[i];
+                        if (col) row[col] = el.value;
+                    }
+                }
+                // update local data first
+                const data = getSupplierData();
+                if (!data[kategori]) data[kategori] = { _order: [], rows: {} };
+                data[kategori].rows[id] = row;
+                setSupplierData(data);
+                if (useFirebase && row !== null) {
+                    // write the single row and order structure using child() to avoid path-encoding issues
+                    try {
+                        await firebaseDB.ref('supplierData').child(kategori).child('rows').child(id).set(row);
+                        await firebaseDB.ref('supplierData').child(kategori).child('_order').set(data[kategori]._order);
+                        showToast('Baris supplier tersimpan ke Firebase.', 'success');
+                    } catch (e) {
+                        // fallback to firebaseSet
+                        await firebaseSet(`/supplierData/${encodeURIComponent(kategori)}/rows/${id}`, row);
+                        await firebaseSet(`/supplierData/${encodeURIComponent(kategori)}/_order`, data[kategori]._order);
+                        showToast('Baris supplier tersimpan (fallback).', 'success');
+                    }
+                }
+            } catch (e) {
+                console.warn('saveSupplierRow error', e);
+                showToast('Gagal menyimpan supplier: ' + (e && e.message ? e.message : e), 'error', 5000);
+            }
+        }
+
+        async function savePelangganRow(id) {
+            try {
+                // read DOM values for the pelanggan row
+                const tr = document.querySelector(`#pelangganTableWrap tr[data-id="${id}"]`);
+                const row = {};
+                if (tr) {
+                    const inputs = tr.querySelectorAll('input, textarea');
+                    for (let i = 0; i < inputs.length; i++) {
+                        const el = inputs[i];
+                        const col = pelangganColumns[i];
+                        if (col) row[col] = el.value;
+                    }
+                }
+                // update local data
+                const data = getPelangganData();
+                if (!data.rows) data.rows = {};
+                if (!data._order) data._order = [];
+                data.rows[id] = row;
+                setPelangganData(data);
+                if (useFirebase && row !== null) {
+                    try {
+                        await firebaseDB.ref('pelangganData').child('rows').child(id).set(row);
+                        await firebaseDB.ref('pelangganData').child('_order').set(data._order);
+                        showToast('Baris pelanggan tersimpan ke Firebase.', 'success');
+                    } catch (e) {
+                        await firebaseSet(`/pelangganData/rows/${id}`, row);
+                        await firebaseSet(`/pelangganData/_order`, data._order);
+                        showToast('Baris pelanggan tersimpan (fallback).', 'success');
+                    }
+                }
+            } catch (e) {
+                console.warn('savePelangganRow error', e);
+                showToast('Gagal menyimpan pelanggan: ' + (e && e.message ? e.message : e), 'error', 5000);
+            }
+        }
+
+        // helpers to save then insert a new row below
+        async function saveAndInsertSupplier(kategori, id) {
+            await saveSupplierRow(kategori, id);
+            await addSupplierRowAfter(kategori, id);
+        }
+        async function saveAndInsertPelanggan(id) {
+            await savePelangganRow(id);
+            await addPelangganRowAfter(id);
+        }
+
+        // Try to load data from Firebase on startup (if available), otherwise use localStorage
+        async function loadFromFirebaseIfAvailable() {
+            if (!useFirebase) return;
+            try {
+                const fSup = await firebaseGetOnce('/supplierData');
+                if (fSup) localStorage.setItem(supplierDataKey, JSON.stringify(fSup));
+                const fPel = await firebaseGetOnce('/pelangganData');
+                if (fPel) localStorage.setItem(pelangganDataKey, JSON.stringify(fPel));
+            } catch (e) {
+                console.warn('Error loading from firebase', e);
+            }
+        }
+
+        // Initial load -> attempt to sync from Firebase then render
+        (async () => {
+            await loadFromFirebaseIfAvailable();
+            renderSupplierTable();
+            renderPelangganTable();
+        })();
     </script>
 </body>
 </html>
