@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Web Organizer</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #18181b;
+            --card: #232329;
+            --accent: #6366f1;
+            --text: #f3f4f6;
+            --icon-bg: #292933;
+            --icon-hover: #3b3b4a;
+            --border: #2d2d37;
+            --table-header: #232329;
+            --table-row: #1f1f25;
+        }
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            transition: background 0.3s;
+        }
+        .container {
+            max-width: 2200px;
+            margin: 0 auto;
+            padding: 20px 14px;
+        }
+        h1 {
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 32px;
+            letter-spacing: 1px;
+        }
+        .app-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 20px;
+            margin-bottom: 28px;
+            justify-items: center;
+        }
+        .app-icon {
+            background: var(--icon-bg);
+            border-radius: 18px;
+            width: 132px;
+            height: 92px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px #0002;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+            border: 1px solid var(--border);
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+            overflow: hidden;
+        }
+        .app-icon:hover {
+            background: var(--icon-hover);
+            transform: translateY(-4px) scale(1.04);
+        }
+        .app-icon svg {
+            width: 36px;
+            height: 36px;
+            margin-bottom: 10px;
+            fill: var(--accent);
+            transition: fill 0.2s;
+        }
+        .app-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-align: center;
+            color: var(--text);
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+        }
+        /* Icon button styles used throughout UI */
+        .icon-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--icon-bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.15s, transform 0.12s;
+        }
+        .icon-btn svg { width:18px; height:18px; fill:var(--text); }
+        .icon-btn:hover { background: var(--icon-hover); transform: translateY(-2px); }
+        .icon-only {
+            width: 40px;
+            height: 36px;
+            padding: 6px;
+            justify-content: center;
+            border-radius: 8px;
+        }
+        .icon-only svg { width:16px; height:16px; fill:#fff; }
+        .sr-only { position: absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+        .nav-tabs {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+        .nav-tab {
+            background: var(--card);
+            border: none;
+            color: var(--text);
+            padding: 10px 22px;
+            border-radius: 18px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            outline: none;
+            border: 1px solid var(--border);
+        }
+        .nav-tab.active {
+            background: var(--accent);
+            color: #fff;
+        }
+        .tab-content {
+            background: var(--card);
+            border-radius: 14px;
+            padding: 18px;
+            box-shadow: 0 2px 8px #0002;
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            background: var(--table-row);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: var(--table-header);
+            font-weight: 600;
+            color: var(--accent);
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        select, input {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            margin-right: 8px;
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+
+        /* Responsive table wrapper to prevent overflow */
+        .table-wrap {
+            overflow: auto;
+            max-width: 100%;
+        }
+        /* Excel-like, simple table styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed; /* Fixed layout untuk kontrol lebar kolom */
+            background: transparent;
+            border: 2px solid var(--border);
+        }
+        table th, table td {
+            border: 1px solid var(--border);
+        }
+        thead th {
+            background: rgba(99, 102, 241, 0.15);
+            color: var(--accent);
+            font-weight: 600;
+            padding: 12px;
+            text-align: left;
+            border: 1px solid var(--border);
+            border-bottom: 2px solid var(--accent);
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            max-width: 200px;
+            min-width: 80px;
+        }
+        tbody td {
+            padding: 12px;
+            border: 1px solid var(--border);
+            vertical-align: top;
+            background: rgba(0,0,0,0.02);
+            max-width: 200px;
+            min-width: 80px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+        tbody tr:nth-child(even) td { background: rgba(0,0,0,0.04); }
+        tbody tr:hover td { background: rgba(99, 102, 241, 0.08); }
+        table input[type="text"], table textarea {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            background: transparent;
+            border: none;
+            padding: 6px 4px;
+            border-radius: 4px;
+            color: var(--text);
+            outline: none;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        table textarea {
+            min-height: 40px;
+            max-height: 400px;
+            resize: vertical;
+            overflow: hidden;
+            line-height: 1.35;
+            white-space: pre-wrap;
+        }
+        .view-text {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            white-space: normal;
+            display: block;
+            max-width: 100%;
+        }
+        tbody td { word-break: break-word; white-space: normal; }
+        .add-row-btn { /* keep legacy name but use icon-btn styles */
+            all: unset;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--accent);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.12s, transform 0.12s;
+        }
+        .add-row-btn svg { width:16px; height:16px; fill:#fff; }
+        .add-row-btn:hover { background:#4f46e5; transform: translateY(-2px); }
+        .delete-btn {
+            all: unset;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #ef4444;
+            color: #fff;
+            padding: 6px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.12s, transform 0.12s;
+        }
+        .delete-btn svg { width:14px; height:14px; fill:#fff; }
+        .delete-btn:hover { background:#dc2626; transform: translateY(-2px); }
+        /* save-btn removed — saving is now explicit by Enter key */
+        
+        /* Edit/View Mode Styles */
+        .table-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            align-items: center;
+        }
+        .mode-toggle-btn {
+            all: unset;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--accent);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.12s, transform 0.12s;
+        }
+        .mode-toggle-btn svg { width:16px; height:16px; fill:#fff; }
+        .mode-toggle-btn:hover { background:#4f46e5; transform: translateY(-2px); }
+        .save-cancel-group {
+            display: none;
+            gap: 8px;
+        }
+        .save-cancel-group.visible {
+            display: flex;
+        }
+        .save-btn, .cancel-btn {
+            all: unset;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.12s, transform 0.12s;
+        }
+        .dup-btn {
+            all: unset;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #8b5cf6;
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.12s, transform 0.12s;
+        }
+        .dup-btn:hover {
+            background: #7c3aed;
+            transform: translateY(-2px);
+        }
+        .save-btn {
+            background: #10b981;
+            color: #fff;
+        }
+        .save-btn:hover { background: #059669; transform: translateY(-2px); }
+        .save-btn svg { width:16px; height:16px; fill:#fff; }
+        .cancel-btn {
+            background: #6b7280;
+            color: #fff;
+        }
+        .cancel-btn:hover { background: #4b5563; transform: translateY(-2px); }
+        .cancel-btn svg { width:16px; height:16px; fill:#fff; }
+        
+        /* View mode: hide edit controls, show static text */
+        .table-view-mode table input[type="text"],
+        .table-view-mode table textarea {
+            display: none;
+        }
+        .table-view-mode table .edit-only {
+            display: none;
+        }
+        /* Hide the action column (last column) in view mode */
+        .table-view-mode table th:last-child,
+        .table-view-mode table td:last-child {
+            display: none;
+        }
+        .table-view-mode table .view-text {
+            display: block;
+        }
+        
+        /* Edit mode: show edit controls, hide static text */
+        .table-edit-mode table .view-text {
+            display: none;
+        }
+        .table-edit-mode table input[type="text"],
+        .table-edit-mode table textarea {
+            display: block;
+        }
+        .table-edit-mode table .edit-only {
+            display: flex;
+        }
+        
+        /* Modal overlay and floating container */
+        #modalOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            animation: fadeIn 0.2s;
+        }
+        #modalOverlay.active {
+            display: block;
+        }
+        #modalBox {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            right: 20px;
+            width: 1600px;
+            height: 680px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            z-index: 1000;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #modalBox.active {
+            display: flex;
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0,0,0,0.1);
+        }
+        .modal-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text);
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .modal-btn {
+            all: unset;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(99,102,241,0.1);
+            border: 1px solid rgba(99,102,241,0.2);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: #6366f1;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+        .modal-btn:hover {
+            background: rgba(99,102,241,0.2);
+        }
+        .modal-close {
+            all: unset;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,0,0,0.1);
+            border: 1px solid rgba(255,0,0,0.2);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: #ef4444;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        .modal-close:hover {
+            background: rgba(255,0,0,0.2);
+        }
+        
+        /* Maximized state */
+        #modalBox.maximized {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 0 !important;
+            transform: none !important;
+        }
+        #modalOverlay.maximized {
+            display: none !important;
+        }
+        .modal-content {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+        .modal-content iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        @media (max-width: 1024px) {
+            #modalBox {
+                width: 90vw;
+                height: 70vh;
+                bottom: 10px;
+                right: 10px;
+                left: 10px;
+            }
+        }
+        @media (max-width: 600px) {
+            .container { padding: 12px; }
+            .app-grid { gap: 16px; }
+            .app-icon { width: 80px; height: 80px; }
+            .tab-content { padding: 12px; }
+            th, td { padding: 7px 6px; }
+            #modalBox {
+                width: 95vw;
+                height: 80vh;
+                bottom: 5px;
+                right: 5px;
+                left: 5px;
+            }
+        }
+        /* Table header / caption styling (kehilangan isi tabel) */
+        thead th, table caption {
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 20px;
+            line-height: 1.2;
+            field-sizing: content;
+        }
+        /* Styling terpisah untuk isi tabel (body) */
+        .table-isi, .table-isi td, .table-isi td input, .table-isi td textarea {
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 20px;
+            line-height: 1.2;
+            field-sizing: content;
+        }
+        /* Toast styles */
+        .toast {
+            min-width: 220px;
+            max-width: 360px;
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 10px 12px;
+            border-radius: 8px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+            font-size: 0.95rem;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .toast.success { background: linear-gradient(90deg,#10b981,#059669); }
+        .toast.error { background: linear-gradient(90deg,#ef4444,#dc2626); }
+        .toast .title { font-weight:700; margin-right:8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Web Organizer</h1>
+        <div class="app-grid">
+            <div class="app-icon" onclick="openModal('INVOICE', 'https://invoice-kanvas.netlify.app')" title="INVOICE">
+                <svg viewBox="0 0 24 24"><path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H6zm0 2h12v16H6V4zm2 2v2h8V6H8zm0 4v2h8v-2H8zm0 4v2h5v-2H8z"/></svg>
+                <span class="app-label">INVOICE</span>
+            </div>
+            <div class="app-icon" onclick="openModal('LACAK ORDER', 'https://lacakorderku.netlify.app')" title="LACAK ORDER">
+                <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm1 17.93V20a1 1 0 0 1-2 0v-2.07A8.015 8.015 0 0 1 4.07 13H2a1 1 0 0 1 0-2h2.07A8.015 8.015 0 0 1 11 4.07V2a1 1 0 0 1 2 0v2.07A8.015 8.015 0 0 1 19.93 11H22a1 1 0 0 1 0 2h-2.07A8.015 8.015 0 0 1 13 19.93z"/></svg>
+                <span class="app-label">LACAK ORDER</span>
+            </div>
+            <div class="app-icon" onclick="openModal('MOCKUPSTUDIO', 'https://customtshirtpricing.netlify.app')" title="MOCKUPSTUDIO">
+                <svg viewBox="0 0 24 24"><path d="M21 7l-1-5H4L3 7v2a1 1 0 0 0 1 1h1v9a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-9h1a1 1 0 0 0 1-1V7zM5.22 4h13.56l.72 3H4.5zm11.78 16H7a1 1 0 0 1-1-1v-9h10v9a1 1 0 0 1-1 1z"/></svg>
+                <span class="app-label">MOCKUPSTUDIO</span>
+            </div>
+            <div class="app-icon" onclick="openModal('FORM PENGIRIMAN', 'https://formpengiriman.netlify.app')" title="FORM PENGIRIMAN">
+                <svg viewBox="0 0 24 24"><path d="M21 8V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v1H1v2h1v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-7h1V8zm-2 9H5v-7h14zm0-9H5V7h14z"/></svg>
+                <span class="app-label">FORM PENGIRIMAN</span>
+            </div>
+            <div class="app-icon" onclick="openModal('CUTTING MANAGEMENT', 'https://cutmanagement.netlify.app')" title="CUTTING MANAGEMENT">
+                <svg viewBox="0 0 24 24"><path d="M19.07 4.93a10 10 0 1 0 0 14.14 10 10 0 0 0 0-14.14zm-1.41 1.41a8 8 0 1 1-11.32 0 8 8 0 0 1 11.32 0z"/></svg>
+                <span class="app-label">CUTTING MANAGEMENT</span>
+            </div>
+            <div class="app-icon" onclick="openModal('KALKULATOR HARGA', 'https://kalkulatorhppsablon.netlify.app')" title="KALKULATOR HARGA">
+                <svg viewBox="0 0 24 24"><path d="M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm0 2v16H7V4zm-8 4h8v2H9zm0 4h8v2H9zm0 4h5v2H9z"/></svg>
+                <span class="app-label">KALKULATOR HARGA</span>
+            </div>
+            <div class="app-icon" onclick="showTab('supplier')" title="DATA SUPPLIER">
+                <svg viewBox="0 0 24 24"><path d="M3 6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zm0 5a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zm0 5a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>
+                <span class="app-label">DATA SUPPLIER</span>
+            </div>
+            <div class="app-icon" onclick="showTab('pelanggan')" title="DATA PELANGGAN">
+                <svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4.42 0-8 1.79-8 4v2h16v-2c0-2.21-3.58-4-8-4z"/></svg>
+                <span class="app-label">DATA PELANGGAN</span>
+            </div>
+        </div>
+
+        <!-- Modal overlay and floating box -->
+        <div id="modalOverlay" onclick="closeModal()"></div>
+        <div id="modalBox">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Loading...</div>
+                <button class="modal-btn" id="modalMaxBtn" onclick="toggleMaximize()" title="Maximize">⛶</button>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-content">
+                <iframe id="modalIframe" src=""></iframe>
+            </div>
+        </div>
+
+        <div class="nav-tabs" id="navTabs" style="display:none;">
+            <button class="nav-tab active" onclick="showTab('supplier')" title="Supplier">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 6h18v2H3zM6 10h12v10H6zM10 2h4v4h-4z"/></svg>
+                <span class="sr-only">Data Supplier</span>
+            </button>
+            <button class="nav-tab" onclick="showTab('pelanggan')" title="Pelanggan">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4.42 0-8 1.79-8 4v2h16v-2c0-2.21-3.58-4-8-4z"/></svg>
+                <span class="sr-only">Data Pelanggan</span>
+            </button>
+            <button class="nav-tab" onclick="showTab('home')" title="Kembali">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path d="M10 19l-7-7 7-7v4h8v6h-8z"/></svg>
+                <span class="sr-only">Kembali</span>
+            </button>
+        </div>
+
+        <div id="tabSupplier" class="tab-content" style="display:none;">
+            <h2>Data Supplier</h2>
+            <label for="kategoriSupplier">Kategori:</label>
+            <select id="kategoriSupplier" onchange="renderSupplierTable()">
+                <option value="KAIN">KAIN</option>
+                <option value="KAOS POLOS">KAOS POLOS</option>
+                <option value="JERSEY">JERSEY</option>
+                <option value="STIKER">STIKER</option>
+                <option value="KERTAS">KERTAS</option>
+                <option value="BANNER">BANNER</option>
+                <option value="LAINNYA">LAINNYA</option>
+            </select>
+            <div class="table-controls" id="supplierControls">
+                <button class="mode-toggle-btn" onclick="toggleSupplierEditMode()" title="Edit Mode">
+                    <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                    <span>Edit Mode</span>
+                </button>
+                <div class="save-cancel-group" id="supplierSaveCancel">
+                    <button class="save-btn" onclick="saveSupplierTableChanges()" title="Simpan">
+                        <svg viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+                        <span>Simpan</span>
+                    </button>
+                    <button class="cancel-btn" onclick="cancelSupplierEditMode()" title="Batal">
+                        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+                        <span>Batal</span>
+                    </button>
+                </div>
+            </div>
+            <!-- Add-row button removed: adding rows is via Enter key only -->
+            <div id="supplierTableWrap" class="table-wrap table-view-mode"></div>
+        </div>
+
+        <div id="tabPelanggan" class="tab-content" style="display:none;">
+            <h2>Data Pelanggan</h2>
+            <div class="table-controls" id="pelangganControls">
+                <button class="mode-toggle-btn" onclick="togglePelangganEditMode()" title="Edit Mode">
+                    <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                    <span>Edit Mode</span>
+                </button>
+                <div class="save-cancel-group" id="pelangganSaveCancel">
+                    <button class="save-btn" onclick="savePelangganTableChanges()" title="Simpan">
+                        <svg viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+                        <span>Simpan</span>
+                    </button>
+                    <button class="cancel-btn" onclick="cancelPelangganEditMode()" title="Batal">
+                        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+                        <span>Batal</span>
+                    </button>
+                </div>
+            </div>
+            <!-- Add-row button removed: adding rows is via Enter key only -->
+            <div id="pelangganTableWrap" class="table-wrap table-view-mode"></div>
+        </div>
+    </div>
+    <div id="toastContainer" aria-live="polite" style="position:fixed;right:16px;bottom:16px;z-index:2000;display:flex;flex-direction:column;gap:8px"></div>
+    <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-database-compat.js"></script>
+    <script>
+        // Firebase configuration (compat v12.6.0)
+        const firebaseConfig = {
+  apiKey: "AIzaSyDuLuiKv4yRoxocLQ-JHDGAu4be68gOAd4",
+  authDomain: "weborganizer-f926a.firebaseapp.com",
+  databaseURL: "https://weborganizer-f926a-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "weborganizer-f926a",
+  storageBucket: "weborganizer-f926a.firebasestorage.app",
+  messagingSenderId: "361016221332",
+  appId: "1:361016221332:web:6c30457b837da61f19de81"
+};
+        // Initialize Firebase (compat)
+        let firebaseApp = null;
+        let firebaseDB = null;
+        try {
+            firebaseApp = firebase.initializeApp(firebaseConfig);
+            if (firebase && firebase.database) {
+                firebaseDB = firebase.database();
+            }
+        } catch (err) {
+            console.warn('Firebase init error:', err);
+        }
+
+        // Small helper to check whether Realtime Database is available
+        const useFirebase = !!(firebaseDB && firebaseDB.ref);
+
+        // Minimal helpers to read/write to RTDB (paths: /supplierData and /pelangganData)
+        function firebaseSet(path, data) {
+            if (!useFirebase) return Promise.resolve();
+            try {
+                return firebaseDB.ref(path).set(data);
+            } catch (e) {
+                console.warn('firebaseSet error', e);
+                return Promise.resolve();
+            }
+        }
+        function firebaseGetOnce(path) {
+            return new Promise((resolve) => {
+                if (!useFirebase) return resolve(null);
+                firebaseDB.ref(path).once('value').then(snap => resolve(snap.val())).catch(err => { console.warn(err); resolve(null); });
+            });
+        }
+        function firebaseRemove(path) {
+            if (!useFirebase) return Promise.resolve();
+            try {
+                return firebaseDB.ref(path).remove();
+            } catch (e) {
+                console.warn('firebaseRemove error', e);
+                return Promise.resolve();
+            }
+        }
+
+        // Toast helper
+        function showToast(message, type = 'info', timeout = 3000) {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const el = document.createElement('div');
+            el.className = 'toast ' + (type === 'success' ? 'success' : (type === 'error' ? 'error' : ''));
+            el.innerHTML = `<div class="title">${type === 'success' ? 'Sukses' : (type === 'error' ? 'Error' : 'Info')}</div><div class="msg">${message}</div>`;
+            container.appendChild(el);
+            setTimeout(()=>{ el.style.opacity = '0.0'; el.style.transform='translateX(8px)'; }, timeout-300);
+            setTimeout(()=>{ try{ container.removeChild(el);}catch(e){} }, timeout);
+        }
+
+        // Add realtime listeners so database updates propagate to all clients
+        if (useFirebase) {
+            try {
+                // supplierData listener - expecting new structured format
+                firebaseDB.ref('/supplierData').on('value', snap => {
+                    const val = snap.val();
+                    if (val !== null) {
+                        localStorage.setItem(supplierDataKey, JSON.stringify(val));
+                        try { renderSupplierTable(); } catch(e){/* ignore */}
+                    }
+                }, err => console.warn('supplierData listener error', err));
+
+                // pelangganData listener - expecting new structured format
+                firebaseDB.ref('/pelangganData').on('value', snap => {
+                    const val = snap.val();
+                    if (val !== null) {
+                        localStorage.setItem(pelangganDataKey, JSON.stringify(val));
+                        try { renderPelangganTable(); } catch(e){/* ignore */}
+                    }
+                }, err => console.warn('pelangganData listener error', err));
+            } catch (e) {
+                console.warn('Error attaching realtime listeners', e);
+            }
+        } else {
+            console.info('Realtime Database not available (useFirebase=false).');
+        }
+
+        // Modal state
+        let isModalMaximized = false;
+        
+        // Edit/View Mode state
+        let supplierEditMode = false;
+        let pelangganEditMode = false;
+        let supplierDataBeforeEdit = null;
+        let pelangganDataBeforeEdit = null;
+        
+        // Modal functions
+        function openModal(title, url) {
+            const overlay = document.getElementById('modalOverlay');
+            const box = document.getElementById('modalBox');
+            const titleEl = document.getElementById('modalTitle');
+            const iframe = document.getElementById('modalIframe');
+            
+            titleEl.textContent = title;
+            iframe.src = url;
+            overlay.classList.add('active');
+            box.classList.add('active');
+            isModalMaximized = false; // reset to floating when opening new modal
+        }
+        
+        function closeModal() {
+            const overlay = document.getElementById('modalOverlay');
+            const box = document.getElementById('modalBox');
+            const iframe = document.getElementById('modalIframe');
+            
+            overlay.classList.remove('active');
+            box.classList.remove('active');
+            box.classList.remove('maximized');
+            overlay.classList.remove('maximized');
+            iframe.src = ''; // clear iframe to stop content loading
+            isModalMaximized = false;
+        }
+        
+        function toggleMaximize() {
+            const overlay = document.getElementById('modalOverlay');
+            const box = document.getElementById('modalBox');
+            const btn = document.getElementById('modalMaxBtn');
+            
+            isModalMaximized = !isModalMaximized;
+            
+            if (isModalMaximized) {
+                box.classList.add('maximized');
+                overlay.classList.add('maximized');
+                btn.textContent = '⛶'; // restore icon
+                btn.title = 'Restore';
+            } else {
+                box.classList.remove('maximized');
+                overlay.classList.remove('maximized');
+                btn.textContent = '⛶'; // maximize icon
+                btn.title = 'Maximize';
+            }
+        }
+        
+        // Close modal on ESC key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+
+        function showTab(tab) {
+            const nav = document.getElementById('navTabs');
+            // show nav only for supplier/pelanggan, hide on home
+            nav.style.display = (tab === 'home') ? 'none' : 'flex';
+            document.getElementById('tabSupplier').style.display = tab === 'supplier' ? '' : 'none';
+            document.getElementById('tabPelanggan').style.display = tab === 'pelanggan' ? '' : 'none';
+            document.querySelector('.app-grid').style.display = tab === 'home' ? '' : 'none';
+            Array.from(document.querySelectorAll('.nav-tab')).forEach(btn => btn.classList.remove('active'));
+            if (tab === 'supplier') document.querySelectorAll('.nav-tab')[0].classList.add('active');
+            if (tab === 'pelanggan') document.querySelectorAll('.nav-tab')[1].classList.add('active');
+            // don't mark 'home' nav as active because nav is hidden on home
+            if (tab === 'supplier') renderSupplierTable();
+            if (tab === 'pelanggan') renderPelangganTable();
+            if (tab !== 'home') window.scrollTo({top:0,behavior:'smooth'});
+        }
+
+        // Toggle edit/view mode for Supplier
+        function toggleSupplierEditMode() {
+            if (supplierEditMode) {
+                // Already in edit mode, just return
+                return;
+            }
+            supplierEditMode = true;
+            supplierDataBeforeEdit = JSON.parse(JSON.stringify(getSupplierData()));
+            renderSupplierTable();
+            document.getElementById('supplierTableWrap').classList.remove('table-view-mode');
+            document.getElementById('supplierTableWrap').classList.add('table-edit-mode');
+            document.getElementById('supplierSaveCancel').classList.add('visible');
+        }
+
+        function cancelSupplierEditMode() {
+            if (!supplierEditMode) return;
+            supplierEditMode = false;
+            if (supplierDataBeforeEdit) {
+                setSupplierData(supplierDataBeforeEdit);
+            }
+            renderSupplierTable();
+            document.getElementById('supplierTableWrap').classList.remove('table-edit-mode');
+            document.getElementById('supplierTableWrap').classList.add('table-view-mode');
+            document.getElementById('supplierSaveCancel').classList.remove('visible');
+        }
+
+        async function saveSupplierTableChanges() {
+            if (!supplierEditMode) return;
+            const data = getSupplierData();
+            // Save all categories to Firebase
+            if (useFirebase) {
+                try {
+                    for (const kategori in data) {
+                        await firebaseDB.ref('supplierData').child(kategori).set(data[kategori]);
+                    }
+                    showToast('Data supplier tersimpan ke Firebase.', 'success');
+                } catch (e) {
+                    console.warn('saveSupplierTableChanges firebase error', e);
+                    showToast('Gagal menyimpan ke Firebase: ' + (e && e.message ? e.message : e), 'error', 5000);
+                    return;
+                }
+            }
+            supplierEditMode = false;
+            supplierDataBeforeEdit = null;
+            renderSupplierTable();
+            document.getElementById('supplierTableWrap').classList.remove('table-edit-mode');
+            document.getElementById('supplierTableWrap').classList.add('table-view-mode');
+            document.getElementById('supplierSaveCancel').classList.remove('visible');
+        }
+
+        // Toggle edit/view mode for Pelanggan
+        function togglePelangganEditMode() {
+            if (pelangganEditMode) {
+                // Already in edit mode, just return
+                return;
+            }
+            pelangganEditMode = true;
+            pelangganDataBeforeEdit = JSON.parse(JSON.stringify(getPelangganData()));
+            renderPelangganTable();
+            document.getElementById('pelangganTableWrap').classList.remove('table-view-mode');
+            document.getElementById('pelangganTableWrap').classList.add('table-edit-mode');
+            document.getElementById('pelangganSaveCancel').classList.add('visible');
+        }
+
+        function cancelPelangganEditMode() {
+            if (!pelangganEditMode) return;
+            pelangganEditMode = false;
+            if (pelangganDataBeforeEdit) {
+                setPelangganData(pelangganDataBeforeEdit);
+            }
+            renderPelangganTable();
+            document.getElementById('pelangganTableWrap').classList.remove('table-edit-mode');
+            document.getElementById('pelangganTableWrap').classList.add('table-view-mode');
+            document.getElementById('pelangganSaveCancel').classList.remove('visible');
+        }
+
+        async function savePelangganTableChanges() {
+            if (!pelangganEditMode) return;
+            const data = getPelangganData();
+            if (useFirebase) {
+                try {
+                    await firebaseDB.ref('pelangganData').set(data);
+                    showToast('Data pelanggan tersimpan ke Firebase.', 'success');
+                } catch (e) {
+                    console.warn('savePelangganTableChanges firebase error', e);
+                    showToast('Gagal menyimpan ke Firebase: ' + (e && e.message ? e.message : e), 'error', 5000);
+                    return;
+                }
+            }
+            pelangganEditMode = false;
+            pelangganDataBeforeEdit = null;
+            renderPelangganTable();
+            document.getElementById('pelangganTableWrap').classList.remove('table-edit-mode');
+            document.getElementById('pelangganTableWrap').classList.add('table-view-mode');
+            document.getElementById('pelangganSaveCancel').classList.remove('visible');
+        }
+
+        // Helper to merge cells with same values vertically in view mode
+        function applyRowspan() {
+            const tables = document.querySelectorAll('table');
+            tables.forEach(table => {
+                if (table.parentElement.classList.contains('table-view-mode')) {
+                    const rows = Array.from(table.querySelectorAll('tbody tr'));
+                    if (rows.length === 0) return;
+                    
+                    const cols = rows[0].cells.length - 1; // exclude delete column
+                    
+                    for (let col = 0; col < cols; col++) {
+                        let rowIndex = 0;
+                        while (rowIndex < rows.length) {
+                            // Get the text content from the view-text div or textarea
+                            const getViewText = (cell) => {
+                                const viewText = cell?.querySelector('.view-text');
+                                if (viewText) {
+                                    return viewText.textContent.trim();
+                                }
+                                const textarea = cell?.querySelector('textarea');
+                                if (textarea) {
+                                    return textarea.value.trim();
+                                }
+                                const input = cell?.querySelector('input[type="text"]');
+                                if (input) {
+                                    return input.value.trim();
+                                }
+                                return (cell?.textContent || '').trim();
+                            };
+                            
+                            const currentValue = getViewText(rows[rowIndex]?.cells[col]);
+                            let spanLength = 1;
+                            
+                            // Count consecutive rows with the same value
+                            for (let nextRow = rowIndex + 1; nextRow < rows.length; nextRow++) {
+                                const nextValue = getViewText(rows[nextRow]?.cells[col]);
+                                if (nextValue === currentValue && currentValue !== '') {
+                                    spanLength++;
+                                } else {
+                                    break;
+                                }
+                            }
+                            
+                            // Apply rowspan if more than 1 row has the same value
+                            if (spanLength > 1) {
+                                const cell = rows[rowIndex]?.cells[col];
+                                if (cell) {
+                                    cell.rowSpan = spanLength;
+                                    // Hide the cells in rows below that are now merged
+                                    for (let i = rowIndex + 1; i < rowIndex + spanLength; i++) {
+                                        rows[i]?.cells[col]?.style.setProperty('display', 'none', 'important');
+                                    }
+                                }
+                            }
+                            
+                            rowIndex += spanLength;
+                        }
+                    }
+                }
+            });
+        }
+
+        // Data storage (localStorage for persistence)
+        const supplierDataKey = 'supplierData';
+        const pelangganDataKey = 'pelangganData';
+
+            // New structured format:
+            // supplierData = { KATEGORI: { _order: [id,...], rows: { id: {Vendor:..., ...} } }, ... }
+            // pelangganData = { _order: [id,...], rows: { id: {Nama Pelanggan:..., ...} } }
+
+            function getSupplierData() {
+                let raw = localStorage.getItem(supplierDataKey);
+                if (!raw) return {};
+                const parsed = JSON.parse(raw);
+                // migrate legacy arrays (if any) to new structure
+                const out = {};
+                for (const k in parsed) {
+                    if (Array.isArray(parsed[k])) {
+                        // convert array to ordered rows with generated ids
+                        const rows = {};
+                        const order = [];
+                        parsed[k].forEach(r => {
+                            const id = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+                            rows[id] = r || {};
+                            order.push(id);
+                        });
+                        out[k] = { _order: order, rows };
+                    } else if (parsed[k] && parsed[k].rows && parsed[k]._order) {
+                        out[k] = parsed[k];
+                    } else {
+                        // unknown shape -> try to convert object-of-rows
+                        const rows = parsed[k] || {};
+                        const order = Object.keys(rows);
+                        out[k] = { _order: order, rows };
+                    }
+                }
+                return out;
+            }
+            function setSupplierData(data) {
+                localStorage.setItem(supplierDataKey, JSON.stringify(data));
+            }
+
+            function getPelangganData() {
+                let raw = localStorage.getItem(pelangganDataKey);
+                if (!raw) return { _order: [], rows: {} };
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    // legacy array -> convert
+                    const rows = {};
+                    const order = [];
+                    parsed.forEach(r => { const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); rows[id]=r||{}; order.push(id); });
+                    return { _order: order, rows };
+                }
+                if (parsed._order && parsed.rows) return parsed;
+                // otherwise try object -> convert
+                const rows = parsed || {};
+                const order = Object.keys(rows);
+                return { _order: order, rows };
+            }
+            function setPelangganData(data) {
+                localStorage.setItem(pelangganDataKey, JSON.stringify(data));
+            }
+            // Jika belum ada data di localStorage, isi dengan contoh data agar tabel terisi
+            (function initSampleData() {
+                try {
+                    const curSup = getSupplierData();
+                    if (!localStorage.getItem(supplierDataKey) || Object.keys(curSup).length === 0) {
+                        const sampleSupplier = {
+                            "Umum": {
+                                _order: ['r1','r2'],
+                                rows: {
+                                    r1: { Vendor: 'Toko A', Jenis: 'Kain', Ukuran: '2m', Bahan: 'Katun', 'Harga Beli': '50000', 'Harga Jual': '75000', Keterangan: 'Stok terbatas' },
+                                    r2: { Vendor: 'Supplier B', Jenis: 'Benang', Ukuran: '500g', Bahan: 'Nilon', 'Harga Beli': '20000', 'Harga Jual': '30000', Keterangan: '' }
+                                }
+                            }
+                        };
+                        setSupplierData(sampleSupplier);
+                    }
+
+                    const curPel = getPelangganData();
+                    if (!localStorage.getItem(pelangganDataKey) || !(curPel._order && curPel._order.length > 0)) {
+                        const samplePelanggan = {
+                            _order: ['p1','p2'],
+                            rows: {
+                                p1: { 'Nama Pelanggan': 'Budi', 'Pesanan': 'Kaos', 'Jumlah': '10', 'Harga': '100000', 'Keterangan': 'Cetak sablon' },
+                                p2: { 'Nama Pelanggan': 'Siti', 'Pesanan': 'Hoodie', 'Jumlah': '5', 'Harga': '150000', 'Keterangan': 'Warna hitam' }
+                            }
+                        };
+                        setPelangganData(samplePelanggan);
+                    }
+                } catch (e) {
+                    console.warn('initSampleData error', e);
+                }
+            })();
+        // NOTE: No automatic Firebase writes while typing. set*Data functions persist to localStorage
+        // and specific save/delete functions update Firebase so operations are explicit and atomic.
+
+        // Supplier Table (now keyed by id with order)
+        const supplierColumns = ['Vendor','Jenis','Ukuran','Bahan','Harga Beli','Harga Jual','Keterangan'];
+        function ensureSupplierCategory(kategori) {
+            const data = getSupplierData();
+            if (!data[kategori]) data[kategori] = { _order: [], rows: {} };
+            return data;
+        }
+        function renderSupplierTable() {
+            const kategori = document.getElementById('kategoriSupplier').value;
+            const data = ensureSupplierCategory(kategori);
+            const cat = data[kategori];
+            // normalize order
+            if (!Array.isArray(cat._order)) cat._order = Object.keys(cat.rows || {});
+            let html = `<table class="data-table">`;
+            html += `<thead><tr>${supplierColumns.map(col=>`<th>${col}</th>`).join('')}<th></th></tr></thead><tbody class="table-isi">`;
+            cat._order.forEach(id => {
+                const row = cat.rows[id] || {};
+                html += `<tr data-id="${id}">`;
+                supplierColumns.forEach(col => {
+                    const v = (row[col]||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                    const vAttr = (row[col]||'').replace(/"/g,'&quot;');
+                    
+                    if (col === 'Vendor' || col === 'Keterangan') {
+                        // For view mode: show text, for edit mode: show textarea
+                        const rowIdx = cat._order.indexOf(id);
+                        const prevValue = rowIdx > 0 ? (cat.rows[cat._order[rowIdx-1]]?.[col] || '') : '';
+                        html += `<td style="position:relative;">`;
+                        html += `<div class="view-text">${v}</div>`;
+                        html += `<div style="display:flex;gap:4px;align-items:center;">`;
+                        html += `<textarea oninput="onCellInput(this, 'supplier','${kategori}', '${id}', '${col}')" onkeydown="if(event.key==='Enter'){ event.preventDefault(); saveSupplierRowData('${kategori}','${id}'); setTimeout(()=>addSupplierRowAfter('${kategori}','${id}'),10); }" style="flex:1;">${v}</textarea>`;
+                        if (supplierEditMode && prevValue) {
+                            html += `<button class="dup-btn" title="Duplikat dari atas" onclick="duplicateFromAboveSupplier('${kategori}','${id}','${col}')" style="padding:4px;height:32px;width:32px;flex-shrink:0;"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#fff;"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>`;
+                        }
+                        html += `</div>`;
+                        html += `</td>`;
+                    } else {
+                        html += `<td style="position:relative;">`;
+                        html += `<div class="view-text">${v}</div>`;
+                        const rowIdx = cat._order.indexOf(id);
+                        const prevValue = rowIdx > 0 ? (cat.rows[cat._order[rowIdx-1]]?.[col] || '') : '';
+                        html += `<div style="display:flex;gap:4px;align-items:center;">`;
+                        html += `<input type="text" value="${vAttr}" oninput="updateSupplierCell('${kategori}','${id}','${col}',this.value)" onkeydown="if(event.key==='Enter'){ event.preventDefault(); saveSupplierRowData('${kategori}','${id}'); setTimeout(()=>addSupplierRowAfter('${kategori}','${id}'),10); }" style="flex:1;">`;
+                        if (supplierEditMode && prevValue) {
+                            html += `<button class="dup-btn" title="Duplikat dari atas" onclick="duplicateFromAboveSupplier('${kategori}','${id}','${col}')" style="padding:4px;height:32px;width:32px;flex-shrink:0;"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#fff;"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>`;
+                        }
+                        html += `</div>`;
+                        html += `</td>`;
+                    }
+                });
+                                html += `<td class="edit-only" style="gap:8px;align-items:center;justify-content:flex-end;">` +
+                                                        `<button class="delete-btn" title="Hapus" onclick="deleteSupplierRow('${kategori}','${id}')"><svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm3 4v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10H6zm3-6h6l1 1H8z"/></svg></button>` +
+                                                    `</td>`;
+            });
+            // if no rows, show an empty row to start
+            if (cat._order.length === 0) {
+                const id = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+                cat._order.push(id);
+                cat.rows[id] = {};
+                setSupplierData(data);
+                html = ``; // re-render
+                return renderSupplierTable();
+            }
+            html += `</tbody></table>`;
+            document.getElementById('supplierTableWrap').innerHTML = html;
+            document.querySelectorAll('#supplierTableWrap textarea').forEach(el=>autoResize(el));
+            
+            // Apply rowspan for view mode
+            if (!supplierEditMode) {
+                setTimeout(applyRowspan, 50);
+            }
+        }
+        function addSupplierRow() {
+            const kategori = document.getElementById('kategoriSupplier').value;
+            addSupplierRowAfter(kategori, null);
+        }
+        async function addSupplierRowAfter(kategori, afterId) {
+            const data = ensureSupplierCategory(kategori);
+            const cat = data[kategori];
+            const id = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+            cat.rows[id] = { Vendor: '', Jenis: '', Ukuran: '', Bahan: '', 'Harga Beli': '', 'Harga Jual': '', Keterangan: '' };
+            if (!cat._order) cat._order = [];
+            if (afterId && cat._order.indexOf(afterId) !== -1) {
+                const idx = cat._order.indexOf(afterId);
+                cat._order.splice(idx+1,0,id);
+            } else {
+                cat._order.push(id);
+            }
+            setSupplierData(data);
+            renderSupplierTable();
+            // focus first input of new row after a short delay
+            setTimeout(()=>{
+                const row = document.querySelector(`#supplierTableWrap tr[data-id="${id}"] input, #supplierTableWrap tr[data-id="${id}"] textarea`);
+                if (row) row.focus();
+            },50);
+            // Jangan simpan ke Firebase di sini - tunggu tombol Simpan diklik saat edit mode aktif
+        }
+        function updateSupplierCell(kategori, id, col, val) {
+            const data = ensureSupplierCategory(kategori);
+            data[kategori].rows[id] = data[kategori].rows[id] || {};
+            data[kategori].rows[id][col] = val;
+            setSupplierData(data);
+        }
+        async function deleteSupplierRow(kategori, id) {
+            // Only allow delete when in edit mode
+            if (!supplierEditMode) {
+                showToast('Aktifkan Edit Mode untuk menghapus baris.', 'error');
+                return;
+            }
+
+            const data = getSupplierData();
+            if (!data[kategori]) return;
+            const cat = data[kategori];
+            // apply local delete
+            delete cat.rows[id];
+            const idx = cat._order.indexOf(id);
+            if (idx !== -1) cat._order.splice(idx,1);
+            setSupplierData(data);
+            renderSupplierTable();
+            // Jangan simpan ke Firebase saat edit mode - tunggu tombol Simpan diklik
+        }
+
+        // Pelanggan Table (keyed rows with order)
+        const pelangganColumns = ['Nama Pelanggan','Pesanan','Jumlah','Harga','Keterangan'];
+        function ensurePelangganStructure() {
+            const data = getPelangganData();
+            if (!data._order) data._order = Object.keys(data.rows || {});
+            if (!data.rows) data.rows = {};
+            return data;
+        }
+        function renderPelangganTable() {
+            const data = ensurePelangganStructure();
+            const order = data._order || [];
+            let html = `<table class="data-table">`;
+            html += `<thead><tr>${pelangganColumns.map(col=>`<th>${col}</th>`).join('')}<th></th></tr></thead><tbody class="table-isi">`;
+            order.forEach(id => {
+                const row = data.rows[id] || {};
+                html += `<tr data-id="${id}">`;
+                pelangganColumns.forEach(col => {
+                    const v = (row[col]||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                    const vAttr = (row[col]||'').replace(/"/g,'&quot;');
+                    
+                    if (col === 'Nama Pelanggan' || col === 'Pesanan' || col === 'Keterangan') {
+                        // For view mode: show text, for edit mode: show textarea
+                        const rowIdx = data._order.indexOf(id);
+                        const prevValue = rowIdx > 0 ? (data.rows[data._order[rowIdx-1]]?.[col] || '') : '';
+                        html += `<td style="position:relative;">`;
+                        html += `<div class="view-text">${v}</div>`;
+                        html += `<div style="display:flex;gap:4px;align-items:center;">`;
+                        html += `<textarea oninput="onCellInput(this, 'pelanggan', null, '${id}', '${col}')" onkeydown="if(event.key==='Enter'){ event.preventDefault(); savePelangganRowData('${id}'); setTimeout(()=>addPelangganRowAfter('${id}'),10); }" style="flex:1;">${v}</textarea>`;
+                        if (pelangganEditMode && prevValue) {
+                            html += `<button class="dup-btn" title="Duplikat dari atas" onclick="duplicateFromAbovePelanggan('${id}','${col}')" style="padding:4px;height:32px;width:32px;flex-shrink:0;"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#fff;"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>`;
+                        }
+                        html += `</div>`;
+                        html += `</td>`;
+                    } else {
+                        html += `<td style="position:relative;">`;
+                        html += `<div class="view-text">${v}</div>`;
+                        const rowIdx = data._order.indexOf(id);
+                        const prevValue = rowIdx > 0 ? (data.rows[data._order[rowIdx-1]]?.[col] || '') : '';
+                        html += `<div style="display:flex;gap:4px;align-items:center;">`;
+                        html += `<input type="text" value="${vAttr}" oninput="updatePelangganCell('${id}','${col}',this.value)" onkeydown="if(event.key==='Enter'){ event.preventDefault(); savePelangganRowData('${id}'); setTimeout(()=>addPelangganRowAfter('${id}'),10); }" style="flex:1;">`;
+                        if (pelangganEditMode && prevValue) {
+                            html += `<button class="dup-btn" title="Duplikat dari atas" onclick="duplicateFromAbovePelanggan('${id}','${col}')" style="padding:4px;height:32px;width:32px;flex-shrink:0;"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#fff;"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>`;
+                        }
+                        html += `</div>`;
+                        html += `</td>`;
+                    }
+                });
+                                html += `<td class="edit-only" style="gap:8px;align-items:center;justify-content:flex-end;">` +
+                                                        `<button class="delete-btn" title="Hapus" onclick="deletePelangganRow('${id}')"><svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm3 4v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10H6zm3-6h6l1 1H8z"/></svg></button>` +
+                                                    `</td>`;
+            });
+            if (order.length === 0) {
+                const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+                data._order.push(id);
+                data.rows[id] = {};
+                setPelangganData(data);
+                return renderPelangganTable();
+            }
+            html += `</tbody></table>`;
+            document.getElementById('pelangganTableWrap').innerHTML = html;
+            document.querySelectorAll('#pelangganTableWrap textarea').forEach(el=>autoResize(el));
+            
+            // Apply rowspan for view mode
+            if (!pelangganEditMode) {
+                setTimeout(applyRowspan, 50);
+            }
+        }
+        function addPelangganRow() {
+            addPelangganRowAfter(null);
+        }
+        async function addPelangganRowAfter(afterId) {
+            const data = ensurePelangganStructure();
+            const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+            data.rows[id] = { "Nama Pelanggan": '', "Pesanan": '', "Jumlah": '', "Harga": '', "Keterangan": '' };
+            if (!data._order) data._order = [];
+            if (afterId && data._order.indexOf(afterId) !== -1) {
+                const idx = data._order.indexOf(afterId);
+                data._order.splice(idx+1,0,id);
+            } else {
+                data._order.push(id);
+            }
+            setPelangganData(data);
+            renderPelangganTable();
+            setTimeout(()=>{
+                const row = document.querySelector(`#pelangganTableWrap tr[data-id="${id}"] input, #pelangganTableWrap tr[data-id="${id}"] textarea`);
+                if (row) row.focus();
+            },50);
+            // Jangan simpan ke Firebase di sini - tunggu tombol Simpan diklik saat edit mode aktif
+        }
+        function updatePelangganCell(id, col, val) {
+            const data = ensurePelangganStructure();
+            data.rows[id] = data.rows[id] || {};
+            data.rows[id][col] = val;
+            setPelangganData(data);
+        }
+        async function deletePelangganRow(id) {
+            // Only allow delete when in edit mode
+            if (!pelangganEditMode) {
+                showToast('Aktifkan Edit Mode untuk menghapus baris.', 'error');
+                return;
+            }
+
+            const data = ensurePelangganStructure();
+            delete data.rows[id];
+            const idx = data._order.indexOf(id);
+            if (idx !== -1) data._order.splice(idx,1);
+            setPelangganData(data);
+            renderPelangganTable();
+            // Jangan simpan ke Firebase saat edit mode - tunggu tombol Simpan diklik
+        }
+
+        // Auto-resize helper for textarea cells and persist value
+        function autoResize(el) {
+            if (!el) return;
+            el.style.height = 'auto';
+            el.style.height = (el.scrollHeight) + 'px';
+        }
+
+        // Called from textarea oninput; type is 'supplier' or 'pelanggan'
+        function onCellInput(el, type, kategori, idx, col) {
+            autoResize(el);
+            const val = el.value;
+            if (type === 'supplier') {
+                // idx is row id
+                updateSupplierCell(kategori, idx, col, val);
+            } else {
+                // idx is row id for pelanggan
+                updatePelangganCell(idx, col, val);
+            }
+        }
+
+        // Function to save row data from DOM to localStorage before adding new row
+        function saveSupplierRowData(kategori, id) {
+            const tr = document.querySelector(`#supplierTableWrap tr[data-id="${id}"]`);
+            if (!tr) return;
+            
+            const data = getSupplierData();
+            if (!data[kategori]) return;
+            
+            if (!data[kategori].rows[id]) {
+                data[kategori].rows[id] = {};
+            }
+            
+            // Extract values from all inputs and textareas in this row
+            const inputs = tr.querySelectorAll('input, textarea');
+            console.log(`saveSupplierRowData: ${kategori}/${id} - found ${inputs.length} inputs, expecting ${supplierColumns.length}`);
+            
+            let inputIdx = 0;
+            supplierColumns.forEach((col, colIdx) => {
+                if (inputIdx < inputs.length) {
+                    const input = inputs[inputIdx];
+                    const oldVal = data[kategori].rows[id][col];
+                    const newVal = input.value;
+                    data[kategori].rows[id][col] = newVal;
+                    console.log(`  [${col}] "${oldVal}" -> "${newVal}"`);
+                    inputIdx++;
+                }
+            });
+            
+            setSupplierData(data);
+            console.log(`saveSupplierRowData: saved to localStorage`);
+        }
+
+        // Function to save row data from DOM to localStorage before adding new row
+        function savePelangganRowData(id) {
+            const tr = document.querySelector(`#pelangganTableWrap tr[data-id="${id}"]`);
+            if (!tr) return;
+            
+            const data = ensurePelangganStructure();
+            if (!data.rows[id]) {
+                data.rows[id] = {};
+            }
+            
+            // Extract values from all inputs and textareas in this row
+            const inputs = tr.querySelectorAll('input, textarea');
+            console.log(`savePelangganRowData: ${id} - found ${inputs.length} inputs, expecting ${pelangganColumns.length}`);
+            
+            let inputIdx = 0;
+            pelangganColumns.forEach((col, colIdx) => {
+                if (inputIdx < inputs.length) {
+                    const input = inputs[inputIdx];
+                    const oldVal = data.rows[id][col];
+                    const newVal = input.value;
+                    data.rows[id][col] = newVal;
+                    console.log(`  [${col}] "${oldVal}" -> "${newVal}"`);
+                    inputIdx++;
+                }
+            });
+            
+            setPelangganData(data);
+            console.log(`savePelangganRowData: saved to localStorage`);
+        }
+
+        // Function to duplicate text from row above - Supplier
+        function duplicateFromAboveSupplier(kategori, id, col) {
+            const data = getSupplierData();
+            if (!data[kategori]) return;
+            const cat = data[kategori];
+            const rowIdx = cat._order.indexOf(id);
+            if (rowIdx <= 0) return; // no row above
+            
+            const prevId = cat._order[rowIdx - 1];
+            const prevValue = cat.rows[prevId]?.[col] || '';
+            
+            // update current row with value from above
+            cat.rows[id][col] = prevValue;
+            setSupplierData(data);
+            renderSupplierTable();
+            
+            // focus the input after short delay
+            setTimeout(() => {
+                const input = document.querySelector(`#supplierTableWrap tr[data-id="${id}"] input[type="text"], #supplierTableWrap tr[data-id="${id}"] textarea`);
+                if (input) input.focus();
+            }, 50);
+        }
+
+        // Function to duplicate text from row above - Pelanggan
+        function duplicateFromAbovePelanggan(id, col) {
+            const data = ensurePelangganStructure();
+            const rowIdx = data._order.indexOf(id);
+            if (rowIdx <= 0) return; // no row above
+            
+            const prevId = data._order[rowIdx - 1];
+            const prevValue = data.rows[prevId]?.[col] || '';
+            
+            // update current row with value from above
+            data.rows[id][col] = prevValue;
+            setPelangganData(data);
+            renderPelangganTable();
+            
+            // focus the input after short delay
+            setTimeout(() => {
+                const input = document.querySelector(`#pelangganTableWrap tr[data-id="${id}"] input[type="text"], #pelangganTableWrap tr[data-id="${id}"] textarea`);
+                if (input) input.focus();
+            }, 50);
+        }
+
+        // Per-row save functions: write single row to Firebase and give quick visual console feedback
+        async function saveSupplierRow(kategori, id) {
+            try {
+                // Read current DOM values for the row to ensure latest content is saved
+                const tr = document.querySelector(`#supplierTableWrap tr[data-id="${id}"]`);
+                const row = {};
+                if (tr) {
+                    const inputs = tr.querySelectorAll('input, textarea');
+                    for (let i = 0; i < inputs.length; i++) {
+                        const el = inputs[i];
+                        // map inputs to columns order
+                        const col = supplierColumns[i];
+                        if (col) row[col] = el.value;
+                    }
+                }
+                // update local data first
+                const data = getSupplierData();
+                if (!data[kategori]) data[kategori] = { _order: [], rows: {} };
+                data[kategori].rows[id] = row;
+                setSupplierData(data);
+                if (useFirebase && row !== null) {
+                    // write the single row and order structure using child() to avoid path-encoding issues
+                    try {
+                        await firebaseDB.ref('supplierData').child(kategori).child('rows').child(id).set(row);
+                        await firebaseDB.ref('supplierData').child(kategori).child('_order').set(data[kategori]._order);
+                        showToast('Baris supplier tersimpan ke Firebase.', 'success');
+                    } catch (e) {
+                        // fallback to firebaseSet
+                        await firebaseSet(`/supplierData/${encodeURIComponent(kategori)}/rows/${id}`, row);
+                        await firebaseSet(`/supplierData/${encodeURIComponent(kategori)}/_order`, data[kategori]._order);
+                        showToast('Baris supplier tersimpan (fallback).', 'success');
+                    }
+                }
+            } catch (e) {
+                console.warn('saveSupplierRow error', e);
+                showToast('Gagal menyimpan supplier: ' + (e && e.message ? e.message : e), 'error', 5000);
+            }
+        }
+
+        async function savePelangganRow(id) {
+            try {
+                // read DOM values for the pelanggan row
+                const tr = document.querySelector(`#pelangganTableWrap tr[data-id="${id}"]`);
+                const row = {};
+                if (tr) {
+                    const inputs = tr.querySelectorAll('input, textarea');
+                    for (let i = 0; i < inputs.length; i++) {
+                        const el = inputs[i];
+                        const col = pelangganColumns[i];
+                        if (col) row[col] = el.value;
+                    }
+                }
+                // update local data
+                const data = getPelangganData();
+                if (!data.rows) data.rows = {};
+                if (!data._order) data._order = [];
+                data.rows[id] = row;
+                setPelangganData(data);
+                if (useFirebase && row !== null) {
+                    try {
+                        await firebaseDB.ref('pelangganData').child('rows').child(id).set(row);
+                        await firebaseDB.ref('pelangganData').child('_order').set(data._order);
+                        showToast('Baris pelanggan tersimpan ke Firebase.', 'success');
+                    } catch (e) {
+                        await firebaseSet(`/pelangganData/rows/${id}`, row);
+                        await firebaseSet(`/pelangganData/_order`, data._order);
+                        showToast('Baris pelanggan tersimpan (fallback).', 'success');
+                    }
+                }
+            } catch (e) {
+                console.warn('savePelangganRow error', e);
+                showToast('Gagal menyimpan pelanggan: ' + (e && e.message ? e.message : e), 'error', 5000);
+            }
+        }
+
+        // Try to load data from Firebase on startup (if available), otherwise use localStorage
+        async function loadFromFirebaseIfAvailable() {
+            if (!useFirebase) return;
+            try {
+                const fSup = await firebaseGetOnce('/supplierData');
+                if (fSup) localStorage.setItem(supplierDataKey, JSON.stringify(fSup));
+                const fPel = await firebaseGetOnce('/pelangganData');
+                if (fPel) localStorage.setItem(pelangganDataKey, JSON.stringify(fPel));
+            } catch (e) {
+                console.warn('Error loading from firebase', e);
+            }
+        }
+
+        // Initial load -> attempt to sync from Firebase then render
+        (async () => {
+            await loadFromFirebaseIfAvailable();
+            renderSupplierTable();
+            renderPelangganTable();
+        })();
+    </script>
+</body>
+</html>
